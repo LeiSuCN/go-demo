@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>表单页面 - Go HTTP服务</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+		
+		body {
+			font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+			color: white;
+			display: flex;
+			height: 100vh;
+			overflow: hidden;
+			background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+			background-size: 400% 400%;
+			animation: gradient 15s ease infinite;
+		}
+		
+		@keyframes gradient {
+			0% {
+				background-position: 0% 50%;
+			}
+			50% {
+				background-position: 100% 50%;
+			}
+			100% {
+				background-position: 0% 50%;
+			}
+		}
+		
+		/* 左侧菜单栏 */
+		.sidebar {
+			width: 260px;
+			background: rgba(255, 255, 255, 0.1);
+			backdrop-filter: blur(10px);
+			border-right: 1px solid rgba(255, 255, 255, 0.18);
+			padding: 2rem 0;
+			display: flex;
+			flex-direction: column;
+			z-index: 10;
+			transition: transform 0.3s ease;
+		}
+		
+		.sidebar-header {
+			padding: 0 2rem 2rem;
+			text-align: center;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+		}
+		
+		.sidebar-header h2 {
+			font-size: 1.8rem;
+			font-weight: 800;
+			text-transform: uppercase;
+			background: linear-gradient(to right, #fff, #f8f8f8, #ffffff);
+			background-size: 200% auto;
+			color: transparent;
+			background-clip: text;
+			-webkit-background-clip: text;
+			animation: textGlow 3s ease-in-out infinite;
+		}
+		
+		@keyframes textGlow {
+			0% {
+				text-shadow: 0 0 10px #fff, 0 0 20px #ff00cc, 0 0 30px #ff00cc;
+			}
+			50% {
+				text-shadow: 0 0 20px #fff, 0 0 30px #3333ff, 0 0 40px #3333ff;
+			}
+			100% {
+				text-shadow: 0 0 10px #fff, 0 0 20px #ff00cc, 0 0 30px #ff00cc;
+			}
+		}
+		
+		.nav-menu {
+			flex: 1;
+			padding: 2rem 0;
+		}
+		
+		.nav-item {
+			padding: 0.8rem 2rem;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+		}
+		
+		.nav-item:hover {
+			background: rgba(255, 255, 255, 0.1);
+			transform: translateX(10px);
+		}
+		
+		.nav-item.active {
+			background: rgba(255, 255, 255, 0.2);
+			border-left: 3px solid #ffffff;
+		}
+		
+		.nav-item i {
+			font-size: 1.2rem;
+		}
+		
+		.nav-item span {
+			font-size: 1.1rem;
+			font-weight: 500;
+		}
+		
+		.sidebar-footer {
+			padding: 2rem;
+			text-align: center;
+			border-top: 1px solid rgba(255, 255, 255, 0.1);
+		}
+		
+		.sidebar-footer p {
+			font-size: 0.9rem;
+			opacity: 0.7;
+		}
+		
+		/* 主内容区域 */
+		.main-content {
+			flex: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 2rem;
+			overflow-y: auto;
+		}
+		
+		.form-container {
+			width: 100%;
+			max-width: 700px;
+			padding: 3rem;
+			border-radius: 20px;
+			background: rgba(255, 255, 255, 0.1);
+			backdrop-filter: blur(10px);
+			box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+			border: 1px solid rgba(255, 255, 255, 0.18);
+			animation: fadeIn 1s ease-out;
+		}
+		
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(20px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+		
+		.form-header {
+			margin-bottom: 2rem;
+			text-align: center;
+		}
+		
+		.form-header h1 {
+			font-size: 2.5rem;
+			margin-bottom: 1rem;
+			font-weight: 800;
+			text-transform: uppercase;
+			background: linear-gradient(to right, #fff, #f8f8f8, #ffffff);
+			background-size: 200% auto;
+			color: transparent;
+			background-clip: text;
+			-webkit-background-clip: text;
+		}
+		
+		.form-header p {
+			font-size: 1.1rem;
+			opacity: 0.8;
+			line-height: 1.6;
+		}
+		
+		.form-group {
+			margin-bottom: 1.5rem;
+		}
+		
+		.form-row {
+			display: flex;
+			gap: 1.5rem;
+			margin-bottom: 1.5rem;
+		}
+		
+		.form-row .form-group {
+			flex: 1;
+			margin-bottom: 0;
+		}
+		
+		label {
+			display: block;
+			font-size: 1rem;
+			font-weight: 600;
+			margin-bottom: 0.5rem;
+			opacity: 0.9;
+		}
+		
+		input[type="text"],
+		input[type="email"],
+		input[type="tel"],
+		input[type="password"],
+		select,
+		textarea {
+			width: 100%;
+			padding: 0.8rem 1rem;
+			border: 1px solid rgba(255, 255, 255, 0.3);
+			border-radius: 10px;
+			background: rgba(255, 255, 255, 0.1);
+			color: white;
+			font-size: 1rem;
+			font-family: inherit;
+			transition: all 0.3s ease;
+			backdrop-filter: blur(5px);
+		}
+		
+		input[type="text"]:focus,
+		input[type="email"]:focus,
+		input[type="tel"]:focus,
+		input[type="password"]:focus,
+		select:focus,
+		textarea:focus {
+			outline: none;
+			border-color: rgba(255, 255, 255, 0.8);
+			box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+			transform: translateY(-2px);
+		}
+		
+		input::placeholder,
+		textarea::placeholder {
+			color: rgba(255, 255, 255, 0.6);
+		}
+		
+		textarea {
+			resize: vertical;
+			min-height: 120px;
+		}
+		
+		.radio-group,
+		.checkbox-group {
+			display: flex;
+			gap: 1.5rem;
+			flex-wrap: wrap;
+		}
+		
+		.radio-item,
+		.checkbox-item {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			cursor: pointer;
+		}
+		
+		input[type="radio"],
+		input[type="checkbox"] {
+			width: auto;
+			cursor: pointer;
+		}
+		
+		.form-actions {
+			display: flex;
+			gap: 1rem;
+			justify-content: flex-end;
+			margin-top: 2rem;
+		}
+		
+		.btn {
+			display: inline-block;
+			padding: 1rem 2rem;
+			font-size: 1rem;
+			font-weight: bold;
+			color: white;
+			border: none;
+			border-radius: 50px;
+			cursor: pointer;
+			text-decoration: none;
+			transition: all 0.3s ease;
+			position: relative;
+			z-index: 1;
+			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+			animation: buttonPop 0.5s ease-out;
+		}
+		
+		@keyframes buttonPop {
+			0% {
+				transform: scale(0.8);
+				opacity: 0;
+			}
+			70% {
+				transform: scale(1.05);
+			}
+			100% {
+				transform: scale(1);
+				opacity: 1;
+			}
+		}
+		
+		.btn::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: -100%;
+			width: 100%;
+			height: 100%;
+			background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+			animation: shine 3s infinite;
+			z-index: -1;
+		}
+		
+		@keyframes shine {
+			0% {
+				left: -100%;
+			}
+			100% {
+				left: 100%;
+			}
+		}
+		
+		.btn-primary {
+			background: linear-gradient(45deg, #ff6b6b, #ee5a6f);
+		}
+		
+		.btn-secondary {
+			background: linear-gradient(45deg, #4facfe, #00f2fe);
+		}
+		
+		.btn:hover {
+			transform: translateY(-5px) scale(1.05);
+			box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+		}
+		
+		.btn:active {
+			transform: translateY(-2px) scale(0.98);
+			box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+		}
+		
+		/* 装饰元素 */
+		.shapes {
+			position: absolute;
+			width: 100%;
+			height: 100%;
+			top: 0;
+			left: 0;
+			z-index: 0;
+			pointer-events: none;
+		}
+		
+		.shape {
+			position: absolute;
+			border-radius: 50%;
+			background: rgba(255, 255, 255, 0.1);
+			backdrop-filter: blur(5px);
+			animation: float 15s ease-in-out infinite;
+		}
+		
+		.shape1 {
+			top: -100px;
+			left: -100px;
+			width: 400px;
+			height: 400px;
+			background: rgba(255, 107, 107, 0.15);
+			animation-delay: 0s;
+		}
+		
+		.shape2 {
+			top: 30%;
+			right: -200px;
+			width: 500px;
+			height: 500px;
+			background: rgba(79, 172, 254, 0.15);
+			animation-delay: -2s;
+			animation-direction: reverse;
+		}
+		
+		.shape3 {
+			bottom: -150px;
+			left: 20%;
+			width: 450px;
+			height: 450px;
+			background: rgba(255, 235, 59, 0.15);
+			animation-delay: -5s;
+		}
+		
+		.shape4 {
+			top: 60%;
+			right: 25%;
+			width: 250px;
+			height: 250px;
+			background: rgba(156, 39, 176, 0.15);
+			animation-delay: -8s;
+			animation-direction: reverse;
+		}
+		
+		@keyframes float {
+			0%, 100% {
+				transform: translate(0, 0) rotate(0deg);
+			}
+			25% {
+				transform: translate(30px, 30px) rotate(5deg);
+			}
+			50% {
+				transform: translate(0, 60px) rotate(10deg);
+			}
+			75% {
+				transform: translate(-30px, 30px) rotate(5deg);
+			}
+		}
+		
+		/* 响应式设计 */
+		@media (max-width: 1024px) {
+			.sidebar {
+				width: 220px;
+			}
+			
+			.form-container {
+				padding: 2.5rem;
+			}
+		}
+		
+		@media (max-width: 768px) {
+			body {
+				flex-direction: column;
+			}
+			
+			.sidebar {
+				width: 100%;
+				height: auto;
+				padding: 1rem 0;
+				border-right: none;
+				border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+			}
+			
+			.sidebar-header {
+				padding: 0 1rem 1rem;
+			}
+			
+			.sidebar-header h2 {
+				font-size: 1.5rem;
+			}
+			
+			.nav-menu {
+				display: flex;
+				overflow-x: auto;
+				padding: 1rem;
+				gap: 0.5rem;
+			}
+			
+			.nav-item {
+				white-space: nowrap;
+				padding: 0.6rem 1rem;
+			}
+			
+			.sidebar-footer {
+				display: none;
+			}
+			
+			.main-content {
+				padding: 1.5rem;
+			}
+			
+			.form-container {
+				padding: 2rem;
+			}
+			
+			.form-header h1 {
+				font-size: 2rem;
+			}
+			
+			.form-row {
+				flex-direction: column;
+				gap: 1.5rem;
+			}
+			
+			.form-actions {
+				flex-direction: column;
+			}
+			
+			.btn {
+				width: 100%;
+			}
+		}
+		
+		@media (max-width: 480px) {
+			.form-container {
+				padding: 1.5rem;
+			}
+			
+			.form-header h1 {
+				font-size: 1.8rem;
+			}
+		}
+	</style>
+</head>
+<body>
+	<!-- 装饰元素 -->
+	<div class="shapes">
+		<div class="shape shape1"></div>
+		<div class="shape shape2"></div>
+		<div class="shape shape3"></div>
+		<div class="shape shape4"></div>
+	</div>
+	
+	<!-- 左侧菜单栏 -->
+	<aside class="sidebar">
+		<div class="sidebar-header">
+			<h2>控制面板</h2>
+		</div>
+		
+		<nav class="nav-menu">
+			<div class="nav-item">
+				<i class="fas fa-home"></i>
+				<span>首页</span>
+			</div>
+			<div class="nav-item active">
+				<i class="fas fa-form"></i>
+				<span>表单提交</span>
+			</div>
+			<div class="nav-item">
+				<i class="fas fa-chart-bar"></i>
+				<span>数据统计</span>
+			</div>
+			<div class="nav-item">
+				<i class="fas fa-users"></i>
+				<span>用户管理</span>
+			</div>
+			<div class="nav-item">
+				<i class="fas fa-cog"></i>
+				<span>系统设置</span>
+			</div>
+			<div class="nav-item">
+				<i class="fas fa-question-circle"></i>
+				<span>帮助中心</span>
+			</div>
+		</nav>
+		
+		<div class="sidebar-footer">
+			<p>&copy; 2024 Go HTTP服务</p>
+		</div>
+	</aside>
+	
+	<!-- 主内容区域 -->
+	<main class="main-content">
+		<div class="form-container">
+			<div class="form-header">
+				<h1>用户信息表单</h1>
+				<p>请填写以下信息以完成注册或更新您的个人资料。所有带 <span style="color: #ff6b6b;">*</span> 的字段为必填项。</p>
+			</div>
+			
+			<form id="userForm">
+				<div class="form-row">
+					<div class="form-group">
+						<label for="firstName">姓氏 <span style="color: #ff6b6b;">*</span></label>
+						<input type="text" id="firstName" name="firstName" placeholder="请输入您的姓氏" required>
+					</div>
+					<div class="form-group">
+						<label for="lastName">名字 <span style="color: #ff6b6b;">*</span></label>
+						<input type="text" id="lastName" name="lastName" placeholder="请输入您的名字" required>
+					</div>
+				</div>
+				
+				<div class="form-group">
+					<label for="email">电子邮箱 <span style="color: #ff6b6b;">*</span></label>
+					<input type="email" id="email" name="email" placeholder="请输入您的电子邮箱" required>
+				</div>
+				
+				<div class="form-group">
+					<label for="phone">手机号码 <span style="color: #ff6b6b;">*</span></label>
+					<input type="tel" id="phone" name="phone" placeholder="请输入您的手机号码" required>
+				</div>
+				
+				<div class="form-group">
+					<label for="country">所在国家/地区 <span style="color: #ff6b6b;">*</span></label>
+					<select id="country" name="country" required>
+						<option value="">请选择国家/地区</option>
+						<option value="CN">中国</option>
+						<option value="US">美国</option>
+						<option value="JP">日本</option>
+						<option value="KR">韩国</option>
+						<option value="GB">英国</option>
+						<option value="DE">德国</option>
+						<option value="FR">法国</option>
+					</select>
+				</div>
+				
+				<div class="form-group">
+					<label>性别</label>
+					<div class="radio-group">
+						<div class="radio-item">
+							<input type="radio" id="male" name="gender" value="male">
+							<label for="male">男</label>
+						</div>
+						<div class="radio-item">
+							<input type="radio" id="female" name="gender" value="female">
+							<label for="female">女</label>
+						</div>
+						<div class="radio-item">
+							<input type="radio" id="other" name="gender" value="other">
+							<label for="other">其他</label>
+						</div>
+					</div>
+				</div>
+				
+				<div class="form-group">
+					<label for="interests">兴趣爱好</label>
+					<div class="checkbox-group">
+						<div class="checkbox-item">
+							<input type="checkbox" id="reading" name="interests" value="reading">
+							<label for="reading">阅读</label>
+						</div>
+						<div class="checkbox-item">
+							<input type="checkbox" id="sports" name="interests" value="sports">
+							<label for="sports">运动</label>
+						</div>
+						<div class="checkbox-item">
+							<input type="checkbox" id="music" name="interests" value="music">
+							<label for="music">音乐</label>
+						</div>
+						<div class="checkbox-item">
+							<input type="checkbox" id="travel" name="interests" value="travel">
+							<label for="travel">旅行</label>
+						</div>
+						<div class="checkbox-item">
+							<input type="checkbox" id="coding" name="interests" value="coding">
+							<label for="coding">编程</label>
+						</div>
+					</div>
+				</div>
+				
+				<div class="form-group">
+					<label for="message">留言</label>
+					<textarea id="message" name="message" placeholder="请输入您的留言或建议..."></textarea>
+				</div>
+				
+				<div class="form-group">
+					<div class="checkbox-item">
+						<input type="checkbox" id="agreement" name="agreement" required>
+						<label for="agreement">我已阅读并同意<a href="#" style="color: #4facfe; text-decoration: underline;">服务条款</a>和<a href="#" style="color: #4facfe; text-decoration: underline;">隐私政策</a> <span style="color: #ff6b6b;">*</span></label>
+					</div>
+				</div>
+				
+				<div class="form-actions">
+					<button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'">返回首页</button>
+					<button type="submit" class="btn btn-primary">提交表单</button>
+				</div>
+			</form>
+		</div>
+	</main>
+	
+	<!-- Font Awesome 图标库 -->
+	<script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+	
+	<!-- 表单交互脚本 -->
+	<script>
+		// 表单提交处理
+		document.getElementById('userForm').addEventListener('submit', function(e) {
+			e.preventDefault();
+			
+			// 模拟表单提交
+			const submitButton = this.querySelector('button[type="submit"]');
+			const originalText = submitButton.textContent;
+						
+			submitButton.disabled = true;
+			submitButton.textContent = '提交中...';
+			
+			// 显示提交成功动画
+			const formContainer = document.querySelector('.form-container');
+			formContainer.style.transform = 'scale(0.95)';
+			formContainer.style.opacity = '0.8';
+			
+			// 模拟网络请求延迟
+			setTimeout(() => {
+				// 重置表单
+				this.reset();
+				
+				// 恢复按钮状态
+				submitButton.disabled = false;
+				submitButton.textContent = originalText;
+				
+				// 恢复表单容器样式
+				formContainer.style.transform = 'scale(1)';
+				formContainer.style.opacity = '1';
+				
+				// 显示成功提示
+				showSuccessMessage();
+			}, 1500);
+		});
+		
+		// 显示成功提示
+		function showSuccessMessage() {
+			// 创建成功提示元素
+			const successMessage = document.createElement('div');
+			successMessage.style.cssText = `
+				position: fixed;
+				top: 20px;
+				right: 20px;
+				padding: 1rem 2rem;
+				background: linear-gradient(45deg, #28a745, #20c997);
+				color: white;
+				border-radius: 10px;
+				box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+				z-index: 1000;
+				display: flex;
+				align-items: center;
+				gap: 0.8rem;
+				transform: translateX(100%);
+				opacity: 0;
+				transition: all 0.5s ease;
+			`;
+			
+			successMessage.innerHTML = `
+				<i class="fas fa-check-circle" style="font-size: 1.5rem;"></i>
+				<span style="font-weight: 600;">表单提交成功！</span>
+			`;
+			
+			document.body.appendChild(successMessage);
+			
+			// 显示成功提示
+			setTimeout(() => {
+				successMessage.style.transform = 'translateX(0)';
+				successMessage.style.opacity = '1';
+			}, 100);
+			
+			// 3秒后隐藏成功提示
+			setTimeout(() => {
+				successMessage.style.transform = 'translateX(100%)';
+				successMessage.style.opacity = '0';
+				
+				// 移除元素
+				setTimeout(() => {
+					document.body.removeChild(successMessage);
+				}, 500);
+			}, 3000);
+		}
+		
+		// 为导航项添加点击效果
+		const navItems = document.querySelectorAll('.nav-item');
+		navItems.forEach(item => {
+			item.addEventListener('click', function() {
+				// 移除所有导航项的活动状态
+				navItems.forEach(navItem => navItem.classList.remove('active'));
+				
+				// 为当前点击的导航项添加活动状态
+				this.classList.add('active');
+			});
+		});
+		
+		// 为输入框添加焦点效果
+		const inputs = document.querySelectorAll('input, select, textarea');
+		inputs.forEach(input => {
+			input.addEventListener('focus', function() {
+				this.style.transform = 'translateY(-2px)';
+				this.style.boxShadow = '0 0 15px rgba(255, 255, 255, 0.3)';
+			});
+			
+			input.addEventListener('blur', function() {
+				if (!this.value) {
+					this.style.transform = 'translateY(0)';
+					this.style.boxShadow = 'none';
+				}
+			});
+		});
+	</script>
+</body>
+</html>

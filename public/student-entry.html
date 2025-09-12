@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>学生信息录入 - Go HTTP服务</title>
+	<style>
+		/* CSS变量定义 */
+		:root {
+			--primary-color: #4a6cf7;
+			--primary-hover: #3a59e0;
+			--secondary-color: #f0f2f5;
+			--text-primary: #333;
+			--text-secondary: #666;
+			--border-color: #e0e0e0;
+			--success-color: #28a745;
+			--error-color: #dc3545;
+			--white: #fff;
+			--shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+			--shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.1);
+			--border-radius: 8px;
+		}
+		
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+		
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+			color: var(--text-primary);
+			display: flex;
+			height: 100vh;
+			background-color: #f8f9fa;
+			line-height: 1.6;
+		}
+		
+		/* 主内容区域 */
+		.main-content {
+			flex: 1;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 2rem;
+			overflow-y: auto;
+		}
+		
+		.form-container {
+			width: 100%;
+			max-width: 500px;
+			padding: 2.5rem;
+			border-radius: var(--border-radius);
+			background: var(--white);
+			box-shadow: var(--shadow);
+			transition: box-shadow 0.3s ease;
+		}
+		
+		.form-container:hover {
+			box-shadow: var(--shadow-hover);
+		}
+		
+		.form-header {
+			margin-bottom: 2rem;
+			text-align: center;
+		}
+		
+		.form-header h1 {
+			font-size: 1.8rem;
+			font-weight: 600;
+			color: var(--text-primary);
+			margin-bottom: 0.5rem;
+		}
+		
+		.form-header p {
+			color: var(--text-secondary);
+			font-size: 0.95rem;
+		}
+		
+		.form-group {
+			margin-bottom: 1.5rem;
+		}
+		
+		label {
+			display: block;
+			font-size: 0.95rem;
+			font-weight: 500;
+			margin-bottom: 0.5rem;
+			color: var(--text-primary);
+		}
+		
+		input[type="text"],
+		input[type="date"],
+		select {
+			width: 100%;
+			padding: 0.85rem 1rem;
+			border: 1px solid var(--border-color);
+			border-radius: var(--border-radius);
+			background: var(--white);
+			color: var(--text-primary);
+			font-size: 1rem;
+			font-family: inherit;
+			transition: all 0.3s ease;
+			outline: none;
+		}
+		
+		input[type="text"]:focus,
+		input[type="date"]:focus,
+		select:focus {
+			border-color: var(--primary-color);
+			box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.1);
+		}
+		
+		input::placeholder {
+			color: #999;
+		}
+		
+		.radio-group {
+			display: flex;
+			gap: 1.5rem;
+		}
+		
+		.radio-item {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			cursor: pointer;
+			padding: 0.5rem 0;
+		}
+		
+		input[type="radio"] {
+			width: auto;
+			cursor: pointer;
+			time: 1.2rem;
+		}
+		
+		.form-actions {
+			display: flex;
+			gap: 1rem;
+			justify-content: flex-end;
+			margin-top: 2.5rem;
+			padding-top: 1.5rem;
+			border-top: 1px solid var(--border-color);
+		}
+		
+		.btn {
+			display: inline-block;
+			padding: 0.9rem 1.8rem;
+			font-size: 0.95rem;
+			font-weight: 500;
+			color: var(--white);
+			border: none;
+			border-radius: var(--border-radius);
+			cursor: pointer;
+			text-decoration: none;
+			transition: all 0.3s ease;
+			font-family: inherit;
+			outline: none;
+		}
+		
+		.btn-primary {
+			background-color: var(--primary-color);
+		}
+		
+		.btn-primary:hover {
+			background-color: var(--primary-hover);
+			transform: translateY(-1px);
+		}
+		
+		.btn-secondary {
+			background-color: var(--secondary-color);
+			color: var(--text-primary);
+		}
+		
+		.btn-secondary:hover {
+			background-color: #e4e7ec;
+			transform: translateY(-1px);
+		}
+		
+		/* 表单分割线 */
+		.form-divider {
+			display: flex;
+			align-items: center;
+			margin: 2rem 0;
+			color: var(--text-secondary);
+			font-size: 0.85rem;
+		}
+		
+		.form-divider::before,
+		.form-divider::after {
+			content: '';
+			flex: 1;
+			height: 1px;
+			background-color: var(--border-color);
+			margin: 0 1rem;
+		}
+		
+		/* 必填字段标记 */
+		.required-mark {
+			color: var(--error-color);
+			margin-left: 0.25rem;
+		}
+		
+		/* 响应式设计 */
+		@media (max-width: 768px) {
+			.form-container {
+				padding: 2rem;
+				margin: 1rem;
+			}
+			
+			.form-header h1 {
+				font-size: 1.6rem;
+			}
+			
+			.form-actions {
+				flex-direction: column;
+			}
+			
+			.btn {
+				width: 100%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+		}
+		
+		@media (max-width: 480px) {
+			.form-container {
+				padding: 1.75rem;
+			}
+			
+			.form-header h1 {
+				font-size: 1.5rem;
+			}
+			
+			.radio-group {
+				flex-direction: column;
+				gap: 0.75rem;
+			}
+		}
+	</style>
+</head>
+<body>
+	<!-- 主内容区域 -->
+	<main class="main-content">
+		<div class="form-container">
+			<div class="form-header">
+				<h1>学生信息录入</h1>
+				<p>请填写以下信息以完成学生信息录入</p>
+			</div>
+			
+			<form id="studentForm">
+				<div class="form-group">
+					<label for="studentId">学号 <span class="required-mark">*</span></label>
+					<input type="text" id="studentId" name="studentId" placeholder="请输入学号" required>
+				</div>
+				
+				<div class="form-group">
+					<label for="name">姓名 <span class="required-mark">*</span></label>
+					<input type="text" id="name" name="name" placeholder="请输入姓名" required>
+				</div>
+				
+				<div class="form-group">
+					<label>性别 <span class="required-mark">*</span></label>
+					<div class="radio-group">
+						<div class="radio-item">
+							<input type="radio" id="male" name="gender" value="male" required>
+							<label for="male">男</label>
+						</div>
+						<div class="radio-item">
+							<input type="radio" id="female" name="gender" value="female">
+							<label for="female">女</label>
+						</div>
+					</div>
+				</div>
+				
+				<div class="form-group">
+					<label for="birthDate">出生年月日 <span class="required-mark">*</span></label>
+					<input type="date" id="birthDate" name="birthDate" required>
+				</div>
+				
+				<div class="form-divider">
+					信息确认
+				</div>
+				
+				<div class="form-actions">
+					<button type="button" class="btn btn-secondary" onclick="window.location.href='index.html'">返回首页</button>
+					<button type="submit" class="btn btn-primary">提交信息</button>
+				</div>
+			</form>
+		</div>
+	</main>
+	
+	<!-- 表单交互脚本 -->
+	<script>
+		// 表单提交处理
+		document.getElementById('studentForm').addEventListener('submit', function(e) {
+			e.preventDefault();
+			
+			// 收集表单数据
+			const formData = new FormData(this);
+			const studentData = Object.fromEntries(formData.entries());
+					
+			// 模拟表单提交
+			const submitButton = this.querySelector('button[type="submit"]');
+			const originalText = submitButton.textContent;
+					
+			submitButton.disabled = true;
+			submitButton.textContent = '提交中...';
+			
+			// 发送AJAX请求到后端
+			fetch('/api/submit-student', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(studentData)
+			})
+			.then(response => {
+				if (!response.ok) {
+					throw new Error('网络响应错误');
+				}
+				return response.json();
+			})
+			.then(data => {
+				// 恢复按钮状态
+				submitButton.disabled = false;
+				submitButton.textContent = originalText;
+				
+				// 显示成功提示
+				showMessage(data.success ? 'success' : 'error', data.message);
+				
+				// 如果成功，跳转到学生数据页面
+				if (data.success) {
+					setTimeout(() => {
+						window.location.href = 'students-data.html?studentAdded=true';
+					}, 1500); // 延迟1.5秒跳转，让用户看到成功提示
+				}
+			})
+			.catch(error => {
+				// 恢复按钮状态
+				submitButton.disabled = false;
+				submitButton.textContent = originalText;
+				
+				// 显示错误提示
+				showMessage('error', '提交失败：' + error.message);
+			});
+		});
+		
+		// 显示消息提示
+		function showMessage(type, message) {
+			// 创建消息元素
+			const messageElement = document.createElement('div');
+			messageElement.style.cssText = `
+				position: fixed;
+				top: 20px;
+				right: 20px;
+				padding: 0.85rem 1.5rem;
+				color: white;
+				border-radius: 8px;
+				box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+				z-index: 1000;
+				display: flex;
+				align-items: center;
+				gap: 0.8rem;
+				transform: translateX(100%);
+				opacity: 0;
+				transition: all 0.3s ease;
+				font-family: inherit;
+			`;
+			
+			// 设置不同类型的消息样式
+			if (type === 'success') {
+				messageElement.style.backgroundColor = '#28a745';
+				messageElement.innerHTML = `
+					<i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
+					<span>${message}</span>
+				`;
+			} else {
+				messageElement.style.backgroundColor = '#dc3545';
+				messageElement.innerHTML = `
+					<i class="fas fa-exclamation-circle" style="font-size: 1.2rem;"></i>
+					<span>${message}</span>
+				`;
+			}
+			
+			document.body.appendChild(messageElement);
+			
+			// 显示消息
+			setTimeout(() => {
+				messageElement.style.transform = 'translateX(0)';
+				messageElement.style.opacity = '1';
+			}, 100);
+			
+			// 3秒后隐藏消息
+			setTimeout(() => {
+				messageElement.style.transform = 'translateX(100%)';
+				messageElement.style.opacity = '0';
+				
+				// 移除元素
+				setTimeout(() => {
+					document.body.removeChild(messageElement);
+				}, 300);
+			}, 3000);
+		}
+	</script>
+	
+	<!-- Font Awesome 图标库 -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+</body>
+</html>

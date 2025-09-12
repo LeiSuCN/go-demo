@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>学生数据 - Go HTTP服务</title>
+	<!-- Font Awesome 图标库 -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+	<style>
+		/* CSS变量定义 - Apple风格 */
+		:root {
+			--primary-color: #0071e3;
+			--primary-hover: #0066cc;
+			--text-primary: #1d1d1f;
+			--text-secondary: #86868b;
+			--background-color: #ffffff;
+			--card-background: #f5f5f7;
+			--border-color: #d2d2d7;
+			--success-color: #34c759;
+			--error-color: #ff3b30;
+			--spacing-xs: 8px;
+			--spacing-sm: 16px;
+			--spacing-md: 24px;
+			--spacing-lg: 32px;
+			--spacing-xl: 48px;
+			--border-radius: 12px;
+			--shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+			--transition: all 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
+		}
+
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+			color: var(--text-primary);
+			background-color: var(--background-color);
+			line-height: 1.6;
+		}
+
+		/* 页面容器 */
+		.container {
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: var(--spacing-md);
+		}
+
+		/* 顶部导航栏 */
+		.header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding: var(--spacing-md) 0;
+			margin-bottom: var(--spacing-lg);
+			border-bottom: 1px solid var(--border-color);
+		}
+
+		.header-title {
+			font-size: 2rem;
+			font-weight: 600;
+			letter-spacing: -0.02em;
+		}
+
+		.header-actions {
+			display: flex;
+			gap: var(--spacing-sm);
+		}
+
+		/* 按钮样式 */
+		.btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			padding: var(--spacing-xs) var(--spacing-md);
+			border: none;
+			border-radius: 20px;
+			font-size: 0.9rem;
+			font-weight: 500;
+			cursor: pointer;
+			transition: var(--transition);
+			text-decoration: none;
+			font-family: inherit;
+		}
+
+		.btn-primary {
+			background-color: var(--primary-color);
+			color: white;
+		}
+
+		.btn-primary:hover {
+			background-color: var(--primary-hover);
+			transform: translateY(-1px);
+		}
+
+		/* 数据卡片 */
+		.students-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+			gap: var(--spacing-md);
+			margin-top: var(--spacing-lg);
+		}
+
+		.student-card {
+			background-color: var(--card-background);
+			border-radius: var(--border-radius);
+			padding: var(--spacing-md);
+			transition: var(--transition);
+			display: flex;
+			flex-direction: column;
+		}
+
+		.student-card:hover {
+			transform: translateY(-4px);
+			box-shadow: var(--shadow);
+		}
+
+		.student-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			margin-bottom: var(--spacing-md);
+		}
+
+		.student-info h3 {
+			font-size: 1.2rem;
+			font-weight: 600;
+			letter-spacing: -0.01em;
+			margin-bottom: var(--spacing-xs);
+		}
+
+		.student-id {
+			font-size: 0.9rem;
+			color: var(--text-secondary);
+			font-weight: 400;
+		}
+
+		.student-details {
+			margin-top: auto;
+		}
+
+		.detail-item {
+			display: flex;
+			justify-content: space-between;
+			margin-bottom: var(--spacing-xs);
+			font-size: 0.95rem;
+		}
+
+		.detail-label {
+			color: var(--text-secondary);
+		}
+
+		/* 空状态 */
+		.empty-state {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			padding: var(--spacing-xl) 0;
+			text-align: center;
+			color: var(--text-secondary);
+		}
+
+		.empty-state i {
+			font-size: 4rem;
+			margin-bottom: var(--spacing-md);
+			opacity: 0.3;
+		}
+
+		.empty-state h3 {
+			font-size: 1.5rem;
+			font-weight: 500;
+			margin-bottom: var(--spacing-xs);
+			color: var(--text-primary);
+		}
+
+		/* 加载状态 */
+		.loading {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: var(--spacing-xl);
+			color: var(--text-secondary);
+		}
+
+		.loading::after {
+			content: '';
+			display: inline-block;
+			width: 20px;
+			height: 20px;
+			margin-left: var(--spacing-sm);
+			border: 2px solid var(--border-color);
+			border-radius: 50%;
+			border-top-color: var(--primary-color);
+			animation: spin 0.8s linear infinite;
+		}
+
+		@keyframes spin {
+			to { transform: rotate(360deg); }
+		}
+
+		/* 消息提示 */
+		.message {
+			position: fixed;
+			top: var(--spacing-md);
+			right: var(--spacing-md);
+			padding: var(--spacing-sm) var(--spacing-md);
+			border-radius: var(--border-radius);
+			box-shadow: var(--shadow);
+			z-index: 1000;
+			display: flex;
+			align-items: center;
+			gap: var(--spacing-xs);
+			transform: translateX(100%);
+			opacity: 0;
+			transition: var(--transition);
+		}
+
+		.message.success {
+			background-color: var(--success-color);
+			color: white;
+		}
+
+		.message.error {
+			background-color: var(--error-color);
+			color: white;
+		}
+
+		.message.visible {
+			transform: translateX(0);
+			opacity: 1;
+		}
+
+		/* 响应式设计 */
+		@media (max-width: 768px) {
+			.container {
+				padding: var(--spacing-sm);
+			}
+
+			.header {
+				flex-direction: column;
+				align-items: flex-start;
+				gap: var(--spacing-sm);
+			}
+
+			.header-title {
+				font-size: 1.75rem;
+			}
+
+			.students-grid {
+				grid-template-columns: 1fr;
+			}
+
+			.header-actions {
+				width: 100%;
+				justify-content: flex-end;
+			}
+		}
+
+		/* Apple风格的动画效果 */
+		@keyframes fadeIn {
+			from {
+				opacity: 0;
+				transform: translateY(20px);
+			}
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		.fade-in {
+			animation: fadeIn 0.5s ease-out;
+		}
+
+		/* 数据统计卡片 */
+		.stats-card {
+			background-color: var(--card-background);
+			border-radius: var(--border-radius);
+			padding: var(--spacing-md);
+			text-align: center;
+			transition: var(--transition);
+		}
+
+		.stats-card:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--shadow);
+		}
+
+		.stats-number {
+			font-size: 2.5rem;
+			font-weight: 700;
+			color: var(--primary-color);
+			letter-spacing: -0.03em;
+			margin-bottom: var(--spacing-xs);
+		}
+
+		.stats-label {
+			font-size: 0.9rem;
+			color: var(--text-secondary);
+		}
+
+		.stats-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			gap: var(--spacing-sm);
+			margin-bottom: var(--spacing-lg);
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<!-- 顶部导航栏 -->
+		<header class="header">
+			<div>
+				<h1 class="header-title">学生数据</h1>
+				<p style="color: var(--text-secondary);">查看和管理所有学生信息</p>
+			</div>
+			<div class="header-actions">
+				<a href="student-entry.html" class="btn btn-primary">
+					<i class="fas fa-plus mr-2"></i> 创建学生记录
+				</a>
+			</div>
+		</header>
+
+		<!-- 数据统计卡片 -->
+		<div class="stats-grid">
+			<div class="stats-card" id="totalStudents">
+				<div class="stats-number">0</div>
+				<div class="stats-label">学生总数</div>
+			</div>
+			<div class="stats-card" id="maleStudents">
+				<div class="stats-number">0</div>
+				<div class="stats-label">男生</div>
+			</div>
+			<div class="stats-card" id="femaleStudents">
+				<div class="stats-number">0</div>
+				<div class="stats-label">女生</div>
+			</div>
+		</div>
+
+		<!-- 学生数据列表 -->
+		<div id="studentsContainer">
+			<div class="loading">加载中</div>
+		</div>
+	</div>
+
+	<!-- 消息提示元素 -->
+	<div id="message" class="message">
+		<i class="fas fa-check-circle"></i>
+		<span id="messageText"></span>
+	</div>
+
+	<script>
+		// DOM 元素
+		const studentsContainer = document.getElementById('studentsContainer');
+		const message = document.getElementById('message');
+		const messageText = document.getElementById('messageText');
+		const totalStudents = document.getElementById('totalStudents').querySelector('.stats-number');
+		const maleStudents = document.getElementById('maleStudents').querySelector('.stats-number');
+		const femaleStudents = document.getElementById('femaleStudents').querySelector('.stats-number');
+
+		// 页面加载时获取学生数据
+		document.addEventListener('DOMContentLoaded', function() {
+			fetchStudentsData();
+			
+			// 检查URL参数，看是否有新添加成功的信息
+			const urlParams = new URLSearchParams(window.location.search);
+			const studentAdded = urlParams.get('studentAdded');
+			if (studentAdded === 'true') {
+				showMessage('success', '学生信息添加成功');
+			}
+		});
+
+		// 获取学生数据
+		function fetchStudentsData() {
+			fetch('/api/get-students')
+			.then(response => {
+				if (!response.ok) {
+					throw new Error('获取数据失败');
+				}
+				return response.json();
+			})
+			.then(data => {
+				if (data.success && Array.isArray(data.data)) {
+					renderStudents(data.data);
+					updateStats(data.data);
+				} else {
+					showEmptyState();
+				}
+			})
+			.catch(error => {
+				console.error('获取数据错误:', error);
+				showEmptyState();
+				showMessage('error', '获取数据失败，请稍后再试');
+			});
+		}
+
+		// 渲染学生数据
+		function renderStudents(students) {
+			if (students.length === 0) {
+				showEmptyState();
+				return;
+			}
+
+			// 清空容器
+			studentsContainer.innerHTML = '';
+
+			// 创建学生卡片容器
+			const grid = document.createElement('div');
+			grid.className = 'students-grid';
+
+			// 为每个学生创建卡片
+			students.forEach((student, index) => {
+				const card = document.createElement('div');
+				card.className = 'student-card fade-in';
+				// 添加延迟动画效果
+				card.style.animationDelay = `${index * 50}ms`;
+
+				// 性别图标
+				const genderIcon = student.gender === 'male' ? 
+					'<i class="fas fa-user-tie" style="color: #0071e3;"></i>' : 
+					'<i class="fas fa-user" style="color: #ff2d55;"></i>';
+
+				card.innerHTML = `
+					<div class="student-header">
+						<div class="student-info">
+							<h3>${student.name}</h3>
+							<div class="student-id">${student.studentId}</div>
+						</div>
+						<div style="font-size: 1.5rem;">
+							${genderIcon}
+						</div>
+					</div>
+					<div class="student-details">
+						<div class="detail-item">
+							<span class="detail-label">性别</span>
+							<span>${student.gender === 'male' ? '男' : '女'}</span>
+						</div>
+						<div class="detail-item">
+							<span class="detail-label">出生日期</span>
+							<span>${formatDate(student.birthDate)}</span>
+						</div>
+					</div>
+				`;
+
+				grid.appendChild(card);
+			});
+
+			studentsContainer.appendChild(grid);
+		}
+
+		// 更新统计数据
+		function updateStats(students) {
+			const total = students.length;
+			const male = students.filter(student => student.gender === 'male').length;
+			const female = students.filter(student => student.gender === 'female').length;
+
+			// 添加数字动画效果
+			animateNumber(totalStudents, 0, total, 1000);
+			animateNumber(maleStudents, 0, male, 1000);
+			animateNumber(femaleStudents, 0, female, 1000);
+		}
+
+		// 数字动画函数
+		function animateNumber(element, start, end, duration) {
+			let startTime = null;
+			const step = timestamp => {
+				if (!startTime) startTime = timestamp;
+				const progress = Math.min((timestamp - startTime) / duration, 1);
+				// 使用easeOutQuart缓动函数
+				const easeProgress = 1 - Math.pow(1 - progress, 4);
+				element.textContent = Math.floor(start + (end - start) * easeProgress);
+				if (progress < 1) {
+					window.requestAnimationFrame(step);
+				}
+			};
+			window.requestAnimationFrame(step);
+		}
+
+		// 显示空状态
+		function showEmptyState() {
+			studentsContainer.innerHTML = `
+				<div class="empty-state">
+					<i class="fas fa-user-graduate"></i>
+					<h3>暂无学生记录</h3>
+					<p>点击"创建学生记录"按钮添加第一个学生信息</p>
+				</div>
+			`;
+		}
+
+		// 显示消息
+		function showMessage(type, text) {
+			messageText.textContent = text;
+			message.className = `message ${type}`;
+
+			// 添加可见性类
+			setTimeout(() => {
+				message.classList.add('visible');
+			}, 100);
+
+			// 3秒后隐藏消息
+			setTimeout(() => {
+				message.classList.remove('visible');
+				setTimeout(() => {
+					message.className = 'message';
+				}, 300);
+			}, 3000);
+		}
+
+		// 格式化日期
+		function formatDate(dateString) {
+			const date = new Date(dateString);
+			if (isNaN(date.getTime())) return dateString;
+			return date.toLocaleDateString('zh-CN', {
+				year: 'numeric',
+				month: 'long',
+				day: 'numeric'
+			});
+		}
+	</script>
+</body>
+</html>
