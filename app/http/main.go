@@ -1,17 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+
+	"go-demo/app/http/handler"
 )
 
 func main() {
-	http.HandleFunc("/", hello)
+	http.HandleFunc("/", handler.Hello)
 	log.Println("listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
-}
-
-func hello(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintln(w, "Hello, world!")
 }
